@@ -1,33 +1,46 @@
 #!/bin/bash
-: ${FLY_TARGET?"Need the fly target FLY_TARGET to be set"}
 
+: ${FLY_TARGET?"Need the fly target FLY_TARGET"}
 : ${CONCOURSE_URL?"Need the concourse url"}
 
 export CONCOURSE_URL="https://${CONCOURSE_URL#https://}"
 
+login_concourse() {
+  local concourse_password=$(lpass show --note 'concourse-chorebot-secrets.yml' | grep concourse_admin_password | awk '{print $2}')
+
+  fly -t "$FLY_TARGET" login -c "$CONCOURSE_URL" -u admin -p "$concourse_password"
+}
+
 open_pipeline() {
   local pipeline_name=${1?}
-  open "$CONCOURSE_URL/teams/main/pipelines/${pipeline_name}"
+  local pipeline_url="$CONCOURSE_URL/teams/main/pipelines/${pipeline_name}"
+
+  echo "Open $pipeline_url"
+  open "$pipeline_url"
 }
 
 open_cleanup_pipeline() {
   local lock_name=${1?"Need the lock name"}
   local pipeline_name=${2:-"all-envs-maintenance-master"}
   local cleanup_job_name="cleanup-$lock_name"
+  local pipeline_url=""
+  local build_info=$(get_recent_build $pipeline_name $cleanup_job_name)
 
-  build_info=$(get_recent_build $pipeline_name $cleanup_job_name)
-  echo "$build_info"
   if [ -n "$build_info" ]; then
+    echo "$build_info"
     build_num=$(echo $build_info | awk '{print $3}')
-    open "$CONCOURSE_URL/teams/main/pipelines/${pipeline_name}/jobs/${cleanup_job_name}/builds/${build_num}"
+    pipeline_url="$CONCOURSE_URL/teams/main/pipelines/${pipeline_name}/jobs/${cleanup_job_name}/builds/${build_num}"
   else
-    open "$CONCOURSE_URL/teams/main/pipelines/${pipeline_name}/jobs/${cleanup_job_name}"
+    pipeline_url="$CONCOURSE_URL/teams/main/pipelines/${pipeline_name}/jobs/${cleanup_job_name}"
   fi
-}
 
+  echo "Open $pipeline_url"
+  open "$pipeline_url"
+}
 
 flyhijack() {
   local build_url=${1?}
+
   fly -t "$FLY_TARGET" hijack -u "$build_url"
 }
 
@@ -43,7 +56,5 @@ get_recent_build() {
   local job_name=${2?"Need the job name"}
   local build_count=${3:-1}
 
-  fly -t "$FLY_TARGET" builds -j ${pipeline_name}/${job_name} -c $build_count
+  fly -t "$FLY_TARGET" builds -j ${pipeline_name}/${job_name} -c "$build_count"
 }
-
-
