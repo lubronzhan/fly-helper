@@ -19,7 +19,7 @@ open_cleanup_pipeline() {
   echo "$build_info"
   if [ -n "$build_info" ]; then
     build_num=$(echo $build_info | awk '{print $3}')
-    open "$CONCOURSE_URL/teams/main/pipelines/${pipeline_name}/jobs/${cleanup_job_name}/builds/14"
+    open "$CONCOURSE_URL/teams/main/pipelines/${pipeline_name}/jobs/${cleanup_job_name}/builds/${build_num}"
   else
     open "$CONCOURSE_URL/teams/main/pipelines/${pipeline_name}/jobs/${cleanup_job_name}"
   fi
@@ -44,7 +44,6 @@ get_recent_build() {
   local build_count=${3:-1}
 
   fly -t "$FLY_TARGET" builds -j ${pipeline_name}/${job_name} -c $build_count
-  echo "fly -t "$FLY_TARGET" builds -j ${pipeline_name}/${job_name} -c $build_count"
 }
 
 
