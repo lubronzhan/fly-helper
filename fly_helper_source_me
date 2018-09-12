@@ -58,3 +58,90 @@ get_recent_build() {
 
   fly -t "$FLY_TARGET" builds -j ${pipeline_name}/${job_name} -c "$build_count"
 }
+
+get_access_token_from_concourse() {
+  local token_url="${CONCOURSE_URL}/auth/basic/token?team_name=main"
+  local concourse_password=$(lpass show --note 'concourse-chorebot-secrets.yml' | grep concourse_admin_password | awk '{print $2}')
+  local encoded_credential=$(echo -n "admin:$concourse_password" | base64)
+
+  token_response=$(curl \
+    -X POST \
+    -k \
+    -s \
+    -H "Authorization: Basic $encoded_credential" \
+    "$token_url"
+    )
+
+  if [[ "$token_response" =~ .*not-authorized.* ]] || [ "$token" = "" ];then
+    echo "Error getting token: $token_response"
+    exit 1
+  fi
+
+  token=$(echo $token_response | jq -r '.value')
+
+  echo "$token"
+}
+
+get_access_token() {
+  local token=$(bosh int --path=/targets/"${FLY_TARGET}"/token/value ~/.flyrc)
+
+  echo "$token"
+}
+
+get_pipeline_resources() {
+  local pipeline_name=${1?"Need the pipeline name"}
+  local output_json=${2:-""}
+  local token=$(get_access_token)
+  local pipeline_resource_url="${CONCOURSE_URL}/api/v1/teams/main/pipelines/${pipeline_name}/resources"
+
+  get_pipeline_resource_response=$(curl \
+    -X GET \
+    -k \
+    -s \
+    -H "Authorization: Bearer $token" \
+    $pipeline_resource_url
+    )
+
+  if [ "$output_json" = "json" ];then
+    echo "$get_pipeline_resource_response" | jq -r
+  else
+    echo "$get_pipeline_resource_response" | jq -r '.[].name'
+  fi
+}
+
+get_resourse_version_detail() {
+  local pipeline_name=${1?"Need the pipeline name"}
+  local resource_name=${2?"Need the resource name"}
+  local token=$(get_access_token)
+  local resource_version_detail_url="${CONCOURSE_URL}/api/v1/teams/main/pipelines/${pipeline_name}/resources/${resource_name}/versions"
+
+  get_resource_version_detail_response=$(curl \
+    -X GET \
+    -k \
+    -s \
+    -H "Authorization: Bearer $token" \
+    $resource_version_detail_url
+    )
+  echo "$get_resource_version_detail_response"
+}
+
+check_ship_tile() {
+  local pipeline_branch=${1:="master"}
+  local pipeline_name="ship-tile-$pipeline_branch"
+  local resources=$(get_pipeline_resources $pipeline_name)
+  local token=$(get_access_token)
+  resources_array=($(echo $resources | grep -oE ".*om.*flag"))
+  tmp_file=$(mktemp)
+
+  echo "$pipeline_name status:\n"
+
+  for resource in "${resources_array[@]}"; do
+    resource_verion_detail=$(get_resourse_version_detail "$pipeline_name" "$resource")
+    flag_name=$(echo "$resource_verion_detail" | jq -r '.[1].metadata | .[] | select(.name=="filename").value')
+
+    echo "$resource $flag_name" >> "$tmp_file"
+  done
+
+  cat "$tmp_file" | sed 's/ /,|,/g' | column -s ',' -t
+  rm "$tmp_file"
+}
