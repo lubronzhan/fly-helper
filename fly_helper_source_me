@@ -1,12 +1,14 @@
 #!/bin/bash
 
-RED='\033[0;31m'
-NC='\033[0m'
-
 : ${FLY_TARGET?"Need the fly target FLY_TARGET"}
 : ${CONCOURSE_URL?"Need the concourse url"}
 
-export CONCOURSE_URL=${$(echo "https://${CONCOURSE_URL#https://}")%/}
+RED='\033[0;31m'
+NC='\033[0m'
+CONCOURSE_URL="https://${CONCOURSE_URL#https://}"
+export CONCOURSE_URL="${CONCOURSE_URL/%\/}"
+echo "Concourse url: $CONCOURSE_URL"
+echo "FLY_TARGET:    $FLY_TARGET"
 
 login_concourse() {
   local concourse_password=$(lpass show --note 'concourse-chorebot-secrets.yml' | grep concourse_admin_password | awk '{print $2}')
