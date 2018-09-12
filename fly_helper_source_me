@@ -3,7 +3,7 @@
 : ${FLY_TARGET?"Need the fly target FLY_TARGET"}
 : ${CONCOURSE_URL?"Need the concourse url"}
 
-export CONCOURSE_URL="https://${CONCOURSE_URL#https://}"
+export CONCOURSE_URL=${$(echo "https://${CONCOURSE_URL#https://}")%/}
 
 login_concourse() {
   local concourse_password=$(lpass show --note 'concourse-chorebot-secrets.yml' | grep concourse_admin_password | awk '{print $2}')
@@ -13,7 +13,7 @@ login_concourse() {
 
 open_pipeline() {
   local pipeline_name=${1?}
-  local pipeline_url="$CONCOURSE_URL/teams/main/pipelines/${pipeline_name}"
+  local pipeline_url="${CONCOURSE_URL}/teams/main/pipelines/${pipeline_name}"
 
   echo "Open $pipeline_url"
   open "$pipeline_url"
@@ -29,9 +29,9 @@ open_cleanup_pipeline() {
   if [ -n "$build_info" ]; then
     echo "$build_info"
     build_num=$(echo $build_info | awk '{print $3}')
-    pipeline_url="$CONCOURSE_URL/teams/main/pipelines/${pipeline_name}/jobs/${cleanup_job_name}/builds/${build_num}"
+    pipeline_url="${CONCOURSE_URL}/teams/main/pipelines/${pipeline_name}/jobs/${cleanup_job_name}/builds/${build_num}"
   else
-    pipeline_url="$CONCOURSE_URL/teams/main/pipelines/${pipeline_name}/jobs/${cleanup_job_name}"
+    pipeline_url="${CONCOURSE_URL}/teams/main/pipelines/${pipeline_name}/jobs/${cleanup_job_name}"
   fi
 
   echo "Open $pipeline_url"
