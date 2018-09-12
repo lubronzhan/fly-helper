@@ -131,11 +131,11 @@ get_resourse_version_detail() {
 }
 
 check_ship_tile() {
-  local pipeline_branch=${1:="master"}
+  local pipeline_branch=${1:-"master"}
   local pipeline_name="ship-tile-$pipeline_branch"
-  local resources=$(get_pipeline_resources $pipeline_name)
+  local resources=$(get_pipeline_resources "$pipeline_name")
   local token=$(get_access_token)
-  local resources_array=($(echo $resources | grep -oE ".*om.*flag"))
+  local resources_array=($(echo "$resources" | grep -oE "(.*om.*flag)|(.*flags.*om.*)"))
   local tmp_file=$(mktemp)
 
   echo "$pipeline_name status:\n"
