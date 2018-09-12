@@ -1,5 +1,8 @@
 #!/bin/bash
 
+RED='\033[0;31m'
+NC='\033[0m'
+
 : ${FLY_TARGET?"Need the fly target FLY_TARGET"}
 : ${CONCOURSE_URL?"Need the concourse url"}
 
@@ -130,18 +133,32 @@ check_ship_tile() {
   local pipeline_name="ship-tile-$pipeline_branch"
   local resources=$(get_pipeline_resources $pipeline_name)
   local token=$(get_access_token)
-  resources_array=($(echo $resources | grep -oE ".*om.*flag"))
-  tmp_file=$(mktemp)
+  local resources_array=($(echo $resources | grep -oE ".*om.*flag"))
+  local tmp_file=$(mktemp)
 
   echo "$pipeline_name status:\n"
 
+  local num=0
+  info_array=()
   for resource in "${resources_array[@]}"; do
     resource_verion_detail=$(get_resourse_version_detail "$pipeline_name" "$resource")
     flag_name=$(echo "$resource_verion_detail" | jq -r '.[1].metadata | .[] | select(.name=="filename").value')
-
-    echo "$resource $flag_name" >> "$tmp_file"
+    tile_build_num=$(echo "$flag_name" | grep -oE "build\.\d+" | cut -d \. -f2)
+    if [ "$num" -lt "$tile_build_num" ]; then
+      num="$tile_build_num"
+    fi
+    info_array+=("$resource|$flag_name")
   done
 
-  cat "$tmp_file" | sed 's/ /,|,/g' | column -s ',' -t
+  for info in "${info_array[@]}"; do
+    tile_build_num=$(echo "$info" | grep -oE "build\.\d+" | cut -d \. -f2)
+    colored_info="$info"
+    if [ "$tile_build_num" -lt "$num" ]; then
+      colored_info="$RED$info$NC"
+    fi
+    echo "$colored_info" >> "$tmp_file"
+  done
+
+  cat "$tmp_file" | sed 's/|/,|,/g' | column -s ',' -t
   rm "$tmp_file"
 }
