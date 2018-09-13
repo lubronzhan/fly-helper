@@ -142,6 +142,7 @@ get_pipeline_url_from_flag_url() {
 
 check_ship_tile() {
   local pipeline_branch=${1:-"master"}
+  local build_num_threshold=${2:-""}
   local pipeline_name="ship-tile-$pipeline_branch"
   local resources=$(get_pipeline_resources "$pipeline_name")
   local token=$(get_access_token)
@@ -151,7 +152,7 @@ check_ship_tile() {
   printf "$pipeline_name status:\n"
 
   local num=0
-  info_array=()
+  local info_array=()
   for resource in "${resources_array[@]}"; do
     resource_verion_detail=$(get_resourse_version_detail "$pipeline_name" "$resource")
     # echo "$resource_verion_detail"
@@ -162,21 +163,29 @@ check_ship_tile() {
 
     flag_build_num=$(echo "$flag_name" | cut -d'-' -f2-)
     tile_build_num=$(echo "$flag_name" | grep -oE "build\.\d+" | cut -d \. -f2)
-    if [ "$num" -lt "$tile_build_num" ]; then
-      num="$tile_build_num"
+    if [ -n "$build_num_threshold" ]; then
+      num="$build_num_threshold"
+    else
+      if [ "$num" -lt "$tile_build_num" ]; then
+        num="$tile_build_num"
+      fi
     fi
     info_array+=("$resource_name|$flag_build_num|$pipeline_url")
   done
 
+  local count=0
   for info in "${info_array[@]}"; do
     tile_build_num=$(echo "$info" | grep -oE "build\.\d+" | cut -d \. -f2)
-    colored_info="$NC$NC$info$NC"
+    colored_info="$NC$NC$info $NC"
     if [ "$tile_build_num" -lt "$num" ]; then
-      colored_info="$RED$info$NC"
+      colored_info="$RED$info $NC"
+      ((count+=1))
     fi
     printf "$colored_info\n" >> "$tmp_file"
   done
 
   cat "$tmp_file" | sed 's/|/,|,/g' | column -s ',' -t
   rm "$tmp_file"
+
+  printf "\n$RED$count hasn't passed build.$num $NC\n"
 }
