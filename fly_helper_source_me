@@ -10,6 +10,18 @@ export CONCOURSE_URL="${CONCOURSE_URL/%\/}"
 echo "Concourse url: $CONCOURSE_URL"
 echo "FLY_TARGET:    $FLY_TARGET"
 
+is_authorized() {
+  local response="${1?}"
+
+  if [[ "$response" =~ .*not\ authorized.* ]];then
+    echo "Error getting token: $token_response"
+    echo "false"
+    exit
+  fi
+
+  echo "true"
+}
+
 login_concourse() {
   local concourse_password=$(lpass show --note 'concourse-chorebot-secrets.yml' | grep concourse_admin_password | awk '{print $2}')
 
@@ -83,12 +95,16 @@ get_access_token_from_concourse() {
     "$token_url"
     )
 
-  if [[ "$token_response" =~ .*not-authorized.* ]] || [ "$token" = "" ];then
+  if [[ $(is_authorized "$token_response") = "false" ]]; then
     echo "Error getting token: $token_response"
-    exit 1
+    exit
   fi
 
   token=$(echo $token_response | jq -r '.value')
+  if [ "$token" = "" ]; then
+    echo "Error getting token from token_response: $token"
+    exit
+  fi
 
   echo "$token"
 }
@@ -96,6 +112,9 @@ get_access_token_from_concourse() {
 get_access_token() {
   local token=$(bosh int --path=/targets/"${FLY_TARGET}"/token/value ~/.flyrc)
 
+  if [ -z "$token" ]; then
+    token=$(get_access_token_from_concourse)
+  fi
   echo "$token"
 }
 
@@ -113,7 +132,12 @@ get_pipeline_resources() {
     $pipeline_resource_url
     )
 
-  if [ "$output_json" = "json" ];then
+  if [[ $(is_authorized "$get_pipeline_resource_response") = "false" ]]; then
+    echo "Error getting token: $get_pipeline_resource_response"
+    exit
+  fi
+
+  if [ "$output_json" = "json" ]; then
     echo "$get_pipeline_resource_response" | jq -r
   else
     echo "$get_pipeline_resource_response" | jq -r '.[].name'
@@ -125,6 +149,11 @@ get_resourse_version_detail() {
   local resource_name=${2?"Need the resource name"}
   local token=$(get_access_token)
   local resource_version_detail_url="${CONCOURSE_URL}/api/v1/teams/main/pipelines/${pipeline_name}/resources/${resource_name}/versions"
+
+  if [[ $(is_authorized "$get_resource_version_detail_response") = "false" ]]; then
+    echo "Error getting token: $get_resource_version_detail_response"
+    exit
+  fi
 
   get_resource_version_detail_response=$(curl \
     -X GET \
@@ -155,13 +184,12 @@ check_ship_tile() {
   local resources_array=($(echo "$resources" | grep -v "tile" |grep -oE "(.*om.*flag)|(.*flags.*om.*)"))
   local tmp_file=$(mktemp)
 
-  printf "$pipeline_name status:\n"
+  printf "$pipeline_name status:\n\n"
 
   local num=0
   local info_array=()
   for resource in "${resources_array[@]}"; do
     resource_verion_detail=$(get_resourse_version_detail "$pipeline_name" "$resource")
-    # echo "$resource_verion_detail"
     flag_name=$(echo "$resource_verion_detail" | jq -r '.[0].metadata | .[] | select(.name=="filename").value')
     flag_url=$(echo "$resource_verion_detail" | jq -r '.[0].version.path')
     resource_name=$(echo "$resource" | rev | cut -d '-' -f 2- | rev)
