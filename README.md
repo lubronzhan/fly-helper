@@ -7,10 +7,10 @@ Repo that store all the helpers for cli `fly`
 ```sh
 if [ ! -d $GOPATH/src/github.com/lubronzhan/fly-helper ]; then
   mkdir -p $GOPATH/src/github.com/lubronzhan/ && \
-  git clone git@github.com:lubronzhan/fly-helper.git $GOPATH/src/github.com/lubronzhan/ && \
+  git clone git@github.com:lubronzhan/fly-helper.git $GOPATH/src/github.com/lubronzhan/fly-helper
 fi
 
 cd $GOPATH/src/github.com/lubronzhan/fly-helper
 git pull -r
-./install
+./install.sh
 ```
