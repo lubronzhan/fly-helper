@@ -221,5 +221,5 @@ check_ship_tile() {
   sort "$tmp_file" | sed 's/|/,|,/g' | column -s ',' -t
   rm "$tmp_file"
 
-  printf "\n$RED$count hasn't passed build.$num $NC\n"
+  printf "\n$RED$count pipeline(s) haven't passed build.$num $NC\n"
 }
