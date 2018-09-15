@@ -205,7 +205,6 @@ check_ship_tile() {
     else
       flag_build_num="-"
       tile_build_num=0
-
     fi
 
     if [ -n "$build_num_threshold" ]; then
@@ -220,7 +219,11 @@ check_ship_tile() {
 
   local count=0
   for info in "${info_array[@]}"; do
-    tile_build_num=$(echo "$info" | grep -oE "build\.\d+" | cut -d \. -f2)
+    tile_build_num=0
+    # if there is build number
+    if [[ "$info" =~ .*build\.[0-9]+.* ]]; then
+      tile_build_num=$(echo "$info" | grep -oE "build\.\d+" | cut -d \. -f2)
+    fi
     colored_info="$NC$NC$info $NC"
     if [ "$tile_build_num" -lt "$num" ]; then
       colored_info="$RED$info $NC"
