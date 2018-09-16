@@ -111,10 +111,12 @@ get_access_token_from_concourse() {
 
 get_access_token() {
   local token=$(bosh int --path=/targets/"${FLY_TARGET}"/token/value ~/.flyrc)
+  local login_status="$(fly -t "$FLY_TARGET" status 2>&1)"
 
-  if [ -z "$token" ]; then
+  if [ -z "$token" ] || [[ "$login_status" = *"Token is expired" ]]; then
     token=$(get_access_token_from_concourse)
   fi
+
   echo "$token"
 }
 
