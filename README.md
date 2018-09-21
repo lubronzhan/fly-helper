@@ -11,8 +11,9 @@ if [ ! -d $GOPATH/src/github.com/lubronzhan/fly-helper ]; then
 fi
 
 cd $GOPATH/src/github.com/lubronzhan/fly-helper
-git pull -r
+
 ./install.sh
+
 ```
 
 # Avaialble command

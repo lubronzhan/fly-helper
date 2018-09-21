@@ -1,5 +1,7 @@
 #!/bin/bash
 
+git pull -r
+
 ## Add to bash_profile
 [ -n "$(cat ~/.bash_profile | grep fly_helper)" ] || cat >> ~/.bash_profile << EOF
 ## fly-helper
