@@ -247,3 +247,10 @@ check_ship_tile() {
 
   printf "\n$RED$count pipeline(s) haven't passed build.$num $NC\n"
 }
+
+get_pipelines_with_pattern() {
+  local pattern=${1:-""}
+  local token=$(get_access_token)
+
+  fly -t "$FLY_TARGET" pipelines | cut -d' ' -f1 | grep "$pattern"
+}

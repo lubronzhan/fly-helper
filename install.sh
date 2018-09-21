@@ -10,3 +10,5 @@ source ~/.fly_helper
 EOF
 
 source ~/.bash_profile
+
+login_concourse

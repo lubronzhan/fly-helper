@@ -1,9 +1,0 @@
-#!/bin/bash
-
-set +euox pipefail
-
-value="1.2.3-build.123"
-
-if [[ $value =~ .*build\.[0-9].* ]]; then
-  echo "yeah"
-fi
